@@ -85,6 +85,7 @@ export class Store {
   }
 
   commit (_type, _payload, _options) {
+    debugger
     // check object-style commit
     const {
       type,
