@@ -4,15 +4,24 @@ import { assert, forEachValue } from '../util'
 export default class ModuleCollection {
   constructor (rawRootModule) {
     // register root module (Vuex.Store options)
+    // 注册 root Module
     this.register([], rawRootModule, false)
   }
 
+  /**
+   * 根据path获取子模块
+   * @param {Array} path 
+   */
   get (path) {
     return path.reduce((module, key) => {
       return module.getChild(key)
     }, this.root)
   }
-
+  
+  /**
+   * 获取namespace
+   * @param {Array} path 
+   */
   getNamespace (path) {
     let module = this.root
     return path.reduce((namespace, key) => {
@@ -25,20 +34,30 @@ export default class ModuleCollection {
     update([], this.root, rawRootModule)
   }
 
+  /**
+   * 注册模块
+   * @param {Array<String>} path 
+   * @param {Record<string, any>} rawModule 
+   * @param {Boolean} runtime 
+   */
   register (path, rawModule, runtime = true) {
     if (__DEV__) {
       assertRawModule(path, rawModule)
     }
 
     const newModule = new Module(rawModule, runtime)
+    // 如果path === []， 则说明这是root module
     if (path.length === 0) {
       this.root = newModule
     } else {
+      // 获取父模块
       const parent = this.get(path.slice(0, -1))
+      // 将子模块添加到_children中
       parent.addChild(path[path.length - 1], newModule)
     }
 
     // register nested modules
+    // 注册嵌套子模块
     if (rawModule.modules) {
       forEachValue(rawModule.modules, (rawChildModule, key) => {
         this.register(path.concat(key), rawChildModule, runtime)
@@ -46,6 +65,10 @@ export default class ModuleCollection {
     }
   }
 
+  /**
+   * 卸载子模块
+   * @param {Array<String>} path 
+   */
   unregister (path) {
     const parent = this.get(path.slice(0, -1))
     const key = path[path.length - 1]
@@ -65,9 +88,11 @@ export default class ModuleCollection {
       return
     }
 
+    // 从父模块上移除
     parent.removeChild(key)
   }
 
+  // 判断模块是否注册
   isRegistered (path) {
     const parent = this.get(path.slice(0, -1))
     const key = path[path.length - 1]
