@@ -1,6 +1,7 @@
 export default function (Vue) {
   const version = Number(Vue.version.split('.')[0])
 
+  // 2.0以上版本
   if (version >= 2) {
     Vue.mixin({ beforeCreate: vuexInit })
   } else {
@@ -19,6 +20,7 @@ export default function (Vue) {
    * Vuex init hook, injected into each instances init hooks list.
    */
 
+  // 在breforeCreate里将store注入到每一个组件中
   function vuexInit () {
     const options = this.$options
     // store injection

@@ -10,7 +10,7 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
-
+debugger
 export default {
   computed: mapGetters([
     'evenOrOdd'

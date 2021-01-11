@@ -167,6 +167,7 @@ function isValidMap (map) {
  */
 function normalizeNamespace (fn) {
   return (namespace, map) => {
+    // 模块命名空间
     if (typeof namespace !== 'string') {
       map = namespace
       namespace = ''

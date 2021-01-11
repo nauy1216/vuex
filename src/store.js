@@ -7,6 +7,7 @@ let Vue // bind on install
 
 export class Store {
   constructor (options = {}) {
+    debugger
     // Auto install if it is not done yet and `window` has `Vue`.
     // To allow users to avoid auto-installation in some cases,
     // this code should be placed here. See #731
@@ -15,7 +16,9 @@ export class Store {
     }
 
     if (__DEV__) {
+      // 必须使用Vue.use在beforeCreate中将store注入到组件实例上
       assert(Vue, `must call Vue.use(Vuex) before creating a store instance.`)
+      // vuex本身是依赖promise, 但是不提供polyfill, 在不支持promise的浏览器上需要自己使用polyfill
       assert(typeof Promise !== 'undefined', `vuex requires a Promise polyfill in this browser.`)
       assert(this instanceof Store, `store must be called with the new operator.`)
     }
