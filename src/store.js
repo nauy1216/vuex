@@ -42,6 +42,7 @@ export class Store {
     this._makeLocalGettersCache = Object.create(null)
 
     // bind commit and dispatch to self
+    // 是保证不通过store.commit调用也能正确运行， 比如直接用commit
     const store = this
     const { dispatch, commit } = this
     this.dispatch = function boundDispatch (type, payload) {
@@ -84,16 +85,22 @@ export class Store {
     }
   }
 
+  // 执行mutation
   commit (_type, _payload, _options) {
     debugger
     // check object-style commit
+    // 处理传入参数
     const {
       type,
       payload,
       options
     } = unifyObjectStyle(_type, _payload, _options)
 
+    // type：commmit的类型
+    // payload: 提供的数据
     const mutation = { type, payload }
+
+    // this._mutations上保存了所有的mutation函数
     const entry = this._mutations[type]
     if (!entry) {
       if (__DEV__) {
@@ -101,12 +108,15 @@ export class Store {
       }
       return
     }
+
+    // 遍历entry执行
     this._withCommit(() => {
       entry.forEach(function commitIterator (handler) {
         handler(payload)
       })
     })
 
+    // 通知所有订阅
     this._subscribers
       .slice() // shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
       .forEach(sub => sub(mutation, this.state))
@@ -122,6 +132,7 @@ export class Store {
     }
   }
 
+  // 执行action
   dispatch (_type, _payload) {
     // check object-style dispatch
     const {
@@ -138,6 +149,7 @@ export class Store {
       return
     }
 
+    // 提交前的进行一次subscribe
     try {
       this._actionSubscribers
         .slice() // shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
@@ -150,10 +162,12 @@ export class Store {
       }
     }
 
+    // promise
     const result = entry.length > 1
       ? Promise.all(entry.map(handler => handler(payload)))
       : entry[0](payload)
 
+    // promise状态发生变化
     return new Promise((resolve, reject) => {
       result.then(res => {
         try {
@@ -183,15 +197,19 @@ export class Store {
     })
   }
 
+  // 订阅mutation
   subscribe (fn, options) {
     return genericSubscribe(fn, this._subscribers, options)
   }
 
+  // 订阅action
   subscribeAction (fn, options) {
+    // 如果fn是function类型则默认是before subscribe
     const subs = typeof fn === 'function' ? { before: fn } : fn
     return genericSubscribe(subs, this._actionSubscribers, options)
   }
 
+  // $watch
   watch (getter, cb, options) {
     if (__DEV__) {
       assert(typeof getter === 'function', `store.watch only accepts a function.`)
@@ -199,6 +217,7 @@ export class Store {
     return this._watcherVM.$watch(() => getter(this.state, this.getters), cb, options)
   }
 
+  // 替换state
   replaceState (state) {
     this._withCommit(() => {
       this._vm._data.$$state = state
@@ -234,6 +253,7 @@ export class Store {
     resetStore(this)
   }
 
+  // 判断某个某块是否已经注册
   hasModule (path) {
     if (typeof path === 'string') path = [path]
 
@@ -248,7 +268,7 @@ export class Store {
     this._modules.update(newOptions)
     resetStore(this, true)
   }
-
+  // 标记是通过commit/dispatch来修改数据的
   _withCommit (fn) {
     const committing = this._committing
     this._committing = true
@@ -257,12 +277,16 @@ export class Store {
   }
 }
 
+// 生成subscribe， 返回一个函数用来取消订阅
 function genericSubscribe (fn, subs, options) {
+  // 确保不是重复订阅
+  // prepend属性
   if (subs.indexOf(fn) < 0) {
     options && options.prepend
       ? subs.unshift(fn)
       : subs.push(fn)
   }
+  // 返回一个取消订阅的函数
   return () => {
     const i = subs.indexOf(fn)
     if (i > -1) {
@@ -335,9 +359,11 @@ function resetStoreVM (store, state, hot) {
 
 function installModule (store, rootState, path, module, hot) {
   const isRoot = !path.length
+  // 根据path获取命名空间
   const namespace = store._modules.getNamespace(path)
 
   // register in namespace map
+  // 注册namespace模块
   if (module.namespaced) {
     if (store._modulesNamespaceMap[namespace] && __DEV__) {
       console.error(`[vuex] duplicate namespace ${namespace} for the namespaced module ${path.join('/')}`)
@@ -347,6 +373,7 @@ function installModule (store, rootState, path, module, hot) {
 
   // set state
   if (!isRoot && !hot) {
+    // 获取父模块的状态
     const parentState = getNestedState(rootState, path.slice(0, -1))
     const moduleName = path[path.length - 1]
     store._withCommit(() => {
@@ -357,13 +384,16 @@ function installModule (store, rootState, path, module, hot) {
           )
         }
       }
+      // 将子模块的数据放在父模块数据下面
       Vue.set(parentState, moduleName, module.state)
     })
   }
 
+  // 创建context
   const local = module.context = makeLocalContext(store, namespace, path)
 
   module.forEachMutation((mutation, key) => {
+    // cart/pushProductToCart
     const namespacedType = namespace + key
     registerMutation(store, namespacedType, mutation, local)
   })
@@ -466,7 +496,9 @@ function makeLocalGetters (store, namespace) {
   return store._makeLocalGettersCache[namespace]
 }
 
+// 注册mutation
 function registerMutation (store, type, handler, local) {
+  // 每个type的mutation是一个数组， 也就是说在不同的模块可以重复定义同样名字的mutation
   const entry = store._mutations[type] || (store._mutations[type] = [])
   entry.push(function wrappedMutationHandler (payload) {
     handler.call(store, local.state, payload)
@@ -515,6 +547,7 @@ function registerGetter (store, type, rawGetter, local) {
   }
 }
 
+// 开启严格模式
 function enableStrictMode (store) {
   store._vm.$watch(function () { return this._data.$$state }, () => {
     if (__DEV__) {

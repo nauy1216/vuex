@@ -17,7 +17,7 @@ export default class ModuleCollection {
       return module.getChild(key)
     }, this.root)
   }
-  
+
   /**
    * 获取namespace
    * @param {Array} path 
